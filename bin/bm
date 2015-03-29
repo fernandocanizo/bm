@@ -33,14 +33,8 @@ ENDCONFIGFILE
 	fi
 fi
 
-# thumbs cache
-THUMBS="${BM_SAVE_DIR}bookmark-thumbs"
-
 # bookmarks file
 BOOKMARKS="${BM_SAVE_DIR}/bookmarks"
-
-# HTML file
-HTML=/tmp/bm.html
 
 # ensure directory for saving bm bookmarks exists
 if [[ ! -d ${BM_SAVE_DIR} ]]; then
@@ -79,10 +73,6 @@ usage() {
     # display statistics about the bookmarks
     $ bm statistics
     $ bm stats
-
-    # view bookmark screenshots in your default browser
-    $ bm view design
-    $ bm view
 
     # clear all bookmarks
     $ bm clear
@@ -210,78 +200,6 @@ display_top_ten_tags() {
 
 
 #
-# Stylesheet
-#
-
-style() {
-  cat <<EOF
-<style>
-  * {
-     -webkit-box-sizing: border-box;
-     -moz-box-sizing: border-box;
-     box-sizing: border-box;
-   }
-   body {
-     padding: 50px 0 5px 50px;
-     background: #1f1f1f url(http://subtlepatterns.com/patterns/black-Linen.png);
-     font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif;
-   }
-   .bm {
-     position: relative;
-     float: left;
-     margin: 15px;
-     padding: 1px;
-     opacity: 1;
-     border: 15px solid black;
-     -webkit-border-radius: 5px;
-     -moz-border-radius: 5px;
-     -webkit-transition: -webkit-box-shadow 600ms;
-     -moz-transition: -webkit-box-shadow 600ms;
-     -webkit-box-shadow: 0 0 1px 0 #555, 0 0 10px rgba(0,0,0,.5);
-     -moz-box-shadow: 0 0 1px 0 #555, 0 0 10px rgba(0,0,0,.5);
-     overflow: hidden;
-   }
-   .bm:hover {
-     -webkit-box-shadow: 0 0 40px #1ab0ff
-       , 0 0 3px #06bdff
-       , 0 1px 1px #4ee2ff
-       , 0 1px 0 #fff;
-     -moz-box-shadow: 0 0 40px #1ab0ff
-       , 0 0 3px #06bdff
-       , 0 1px 1px #4ee2ff
-       , 0 1px 0 #fff;
-   }
-   .bm:hover img {
-     opacity: 1;
-   }
-   .bm img {
-     width: 200px;
-     height: 150px;
-     opacity: .5;
-     -webkit-transition: opacity 200ms;
-     -moz-transition: opacity 200ms;
-   }
-   .bm p {
-     margin: 0;
-     padding: 10px;
-     width: 100%;
-     background: rgba(0,0,0,.75);
-     position: absolute;
-     left: 0;
-     color: white;
-     letter-spacing: 1px;
-     bottom: -50px;
-     -webkit-font-smoothing: antialiased;
-     -webkit-transition: bottom 200ms ease-in;
-   }
-   .bm:hover p {
-     bottom: 0;
-   }
-</style>
-EOF
-}
-
-#
 # List urls
 #
 
@@ -291,69 +209,6 @@ urls() {
     | cut -d '|' -f 1
 }
 
-#
-# Generate bookmark screenshots
-#
-
-create_bookmark_screenshots() {
-  which webkit2png > /dev/null
-
-  if test $? -ne 0; then
-    echo 
-    echo "  You need webkit2png(1) installed for this feature:"
-    echo "  $ brew install webkit2png"
-    echo 
-    exit
-  fi
-
-  local urls=`urls`
-
-  # thumbs dir
-  mkdir -p $THUMBS
-
-  # fetch thumbs
-  for url in $urls; do
-    local path=$THUMBS/`echo $url | md5`.png
-    if ! test -f $path; then
-      webkit2png -C -o out.png $url
-      mv out.png-clipped.png $path
-      echo " ... added $path"
-    fi
-  done
-
-  rm -f out.png-{clipped,full,thumb}.png
-}
-
-#
-# View bookmark screenshots grep <pattern>
-#
-
-view_bookmark_screenshots() {
-  create_bookmark_screenshots
-
-  echo "<title>Bookmarks</title>" > $HTML
-  style >> $HTML
-
-  (
-    while read line; do
-      # TODO: slow... refactor
-      local url=`echo "$line" | cut -d '|' -f 1`
-      local desc=`echo "$line" | cut -d '|' -f 2`
-      local tags=`echo "$line" | cut -d '|' -f 3`
-      local path=$THUMBS/`echo $url | md5`.png
-      echo "
-        <div class=bm>
-          <a href='$url'>
-            <img src='$path' />
-          </a>
-          <p>$desc</p>
-        </div>
-      " >> $HTML
-    done
-  ) < <(cat $BOOKMARKS | grep "$1")
-
-  open $HTML
-}
 
 #
 # Remove all bookmarks
@@ -361,7 +216,6 @@ view_bookmark_screenshots() {
 
 clear_bookmarks() {
   rm $BOOKMARKS
-  rm -fr $THUMBS
 }
 
 # no args
@@ -383,7 +237,6 @@ while test $# -ne 0; do
     search) search_bookmarks "$@"; exit ;;
     open) open_bookmark "$@"; exit ;;
     add) save_bookmark "$@"; exit ;;
-    view) view_bookmark_screenshots "$@"; exit ;;
     stats|statistics) show_statistics; exit ;;
     clear) clear_bookmarks; exit ;;
     *) open_bookmark $arg; exit ;;
