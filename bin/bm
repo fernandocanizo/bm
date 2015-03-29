@@ -120,6 +120,11 @@ save_bookmark() {
 #
 
 list_bookmarks() {
+	if [[ ! -r ${BOOKMARKS} ]]; then
+		echo "No bookmarks yet. Try saving some with 'bm add <url>'"
+		return
+	fi
+
   echo
   cat $BOOKMARKS \
     | awk '
