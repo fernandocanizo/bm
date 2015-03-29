@@ -1,24 +1,51 @@
 #!/usr/bin/env bash
 
-# version
-
 VERSION="0.4.1"
 
-# bookmarks dir
+CONFIGURATION_FILE="${HOME}/.config/bmrc"
 
-DIR=~/Dropbox
+# Order of preference for configuration:
+# 1st environment variables
+# 2nd configuration file
+# 3rd script variable
+
+if [[ -z ${BM_SAVE_DIR} ]]; then
+	if [[ -r ${CONFIGURATION_FILE} ]]; then
+		source ${CONFIGURATION_FILE}
+
+	else
+		# create one
+		echo "No configuration file. Creating one..."
+		cat <<"ENDCONFIGFILE" > ${CONFIGURATION_FILE}
+#!/usr/bin/env bash
+
+# Configuration file for bm bookmark manager
+# https://github.com/fernandocanizo/bm
+
+
+# You can also export these variables or set them in the command line to
+# temporally change bm behavior
+
+export BM_SAVE_DIR="${HOME}/Dropbox/bmbookmarks"
+ENDCONFIGFILE
+
+		BM_SAVE_DIR="${HOME}/Dropbox/bmbookmarks"
+	fi
+fi
 
 # thumbs cache
-
-THUMBS=$DIR/bookmark-thumbs
+THUMBS="${BM_SAVE_DIR}bookmark-thumbs"
 
 # bookmarks file
-
-BOOKMARKS=$DIR/bookmarks
+BOOKMARKS="${BM_SAVE_DIR}/bookmarks"
 
 # HTML file
-
 HTML=/tmp/bm.html
+
+# ensure directory for saving bm bookmarks exists
+if [[ ! -d ${BM_SAVE_DIR} ]]; then
+	mkdir ${BM_SAVE_DIR}
+fi
 
 #
 # Output usage info
