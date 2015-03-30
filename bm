@@ -71,9 +71,6 @@ usage() {
     # display statistics about the bookmarks
     $ bm stats
 
-    # clear all bookmarks
-    $ bm clear
-
   Options:
 
      -V, --version   output bm version
@@ -207,14 +204,6 @@ urls() {
 }
 
 
-#
-# Remove all bookmarks
-#
-
-clear_bookmarks() {
-  rm $BOOKMARKS
-}
-
 # no args defaults to list bookmarks
 if test $# -eq 0; then
   list_bookmarks
@@ -233,7 +222,6 @@ while test $# -ne 0; do
     open) open_bookmark "$@"; exit ;;
     add) save_bookmark "$@"; exit ;;
     stats) show_statistics; exit ;;
-    clear) clear_bookmarks; exit ;;
     *) open_bookmark $arg; exit ;;
   esac
 done
