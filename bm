@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Uncomment any of this settings for debugging
+
+# exit if any statement returns false value (can't use $? from now on)
+#set -o errexit
+# exit if variable not set
+#set -o nounset
+# uncomment to debug
+#set -x
+
+
 VERSION="0.4.1"
 
 CONFIGURATION_FILE="${HOME}/.config/bmrc"
@@ -33,7 +43,7 @@ ENDCONFIGFILE
 	fi
 fi
 
-# bookmarks file
+# default bookmarks file. Used when no category is given
 BOOKMARKS="${BM_SAVE_DIR}/bookmarks"
 
 # ensure directory for saving bm bookmarks exists
@@ -52,24 +62,45 @@ usage() {
 
   Commands:
 
-    # add a bookmark with the given url, description, and optional tags
-    $ bm add <url> [desc] [tag...]
+    # add a bookmark
+	$ bm add [-d description] [-f] [-t tag [...]] [-c category [category/subcategory/.../]] URL
+
+	Where:
+
+	-d description
+	adds a description text
+
+	-f
+	fetches the title from the page
+
+	-t tag
+	adds a tag. More can be added
+
+	-c category/subcategory
+	puts the link under said category and or subcategory. Which is just a path
+	in your filesystem, so you can build trees.
+
 
     # open the first bookmark matching <query>
     $ bm open <query>
     $ bm <query>
 
+
     # search the bookmarks via full-text <query>
     $ bm search <query>
+
 
     # show tags
     $ bm tags
 
-	# list bookmarks available (default action with no parameters)
-    $ bm
 
     # display statistics about the bookmarks
     $ bm stats
+
+
+	# command with no extra parameters default to list all available bookmarks
+    $ bm
+
 
   Options:
 
@@ -79,25 +110,74 @@ usage() {
 EOF
 }
 
+
 #
-# Add a bookmark
-#
-#   <url> [description] [tag ...] 
+# Add a bookmark:
+# bm add [-d description] [-f] [-t tag [...]] [-c category [category/subcategory/.../]] URL
 #
 
-save_bookmark() {
-  local url=$1
-  local desc=$2
-  local tags=${@:3}
-  echo
-  echo "  Added bookmark"
-  echo
-  echo "    url: $url"
-  echo "    description: $desc"
-  echo "    tags: $tags"
-  echo
-  echo "$url|$desc|$tags" >> $BOOKMARKS
+add_bookmark() {
+	fetchTitle=0;
+
+	# process parameters
+	while test $# -ne 0; do
+		arg=$1; shift
+		case $arg in
+			-f)
+				fetchTitle=1;
+				;;
+
+			-d)
+				description=$1;
+				shift;
+				;;
+
+			-t)
+				if [[ -z ${tags} ]]; then
+					tags=$1;
+				else
+					tags=${tags}:$1;
+				fi
+				shift;
+				;;
+
+			-c)
+				category=$1
+				mkdir -p ${BM_SAVE_DIR}/${category}
+				# TODO decide what to do if category ends like .../bookmarks
+				bookmarksFile=${BM_SAVE_DIR}/${category}/bookmarks
+				if [[ ! -e ${bookmarksFile} ]]; then
+					# set header
+					echo "URL|Page Title|Description|Tags" >> $bookmarksFile;
+				fi
+				;;
+
+			*)
+				url=$arg
+				;;
+		esac
+	done
+
+	if [[ 1 -eq ${fetchTitle} ]]; then
+		echo "Fetching page title..."
+		pageTitle=`curl -s ${url} | \grep -Po '(?i)(?<=<title>).*(?i)(?=</title>)'`
+	fi
+
+	if [[ -z $bookmarksFile ]]; then
+		bookmarksFile=$BOOKMARKS
+	fi
+
+	cat <<ADD_BOOKMARK
+Adding bookmarks
+	url: $url
+	description: $description
+	title: $pageTitle
+	tags: $tags
+ADD_BOOKMARK
+
+	echo "${url}|${pageTitle}|${description}|${tags}" >> $bookmarksFile
 }
+
 
 #
 # List all bookmarks
@@ -220,7 +300,7 @@ while test $# -ne 0; do
     tags) list_tags; exit ;;
     search) search_bookmarks "$@"; exit ;;
     open) open_bookmark "$@"; exit ;;
-    add) save_bookmark "$@"; exit ;;
+    add) add_bookmark "$@"; exit ;;
     stats) show_statistics; exit ;;
     *) open_bookmark $arg; exit ;;
   esac
